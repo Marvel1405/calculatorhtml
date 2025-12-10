@@ -1,0 +1,187 @@
+<?php
+// Default display
+$display = "0";
+
+// Function to evaluate expression safely
+function evaluateExpression($expression)
+{
+    // Check for invalid characters
+    if (!preg_match('/^[0-9+\-*\/().]+$/', $expression)) {
+        return "Error: Invalid characters";
+    }
+
+    // Basic syntax checks
+    if (preg_match('/[\+\-*\/]{2,}/', $expression)) {
+        return "Error: Invalid operator sequence";
+    }
+
+    if (preg_match('/^\D|\D$/', $expression)) {
+        return "Error: Expression cannot start or end with an operator";
+    }
+
+    // Prevent empty parentheses "()"
+    if (strpos($expression, "()") !== false) {
+        return "Error: Empty parentheses";
+    }
+
+    try {
+        // Wrap eval in error handling
+        set_error_handler(function() { throw new Exception("PHP Error"); });
+
+        // Evaluate expression
+        $result = eval("return ($expression);");
+
+        restore_error_handler();
+
+        // Detect division by zero
+        if ($result === INF || $result === -INF) {
+            return "Error: Division by zero";
+        }
+
+        return $result;
+
+    } catch (Throwable $e) {
+        return "Syntax Error";
+    }
+}
+
+if ($_SERVER["REQUEST_METHOD"] == "POST") {
+    $expression = trim($_POST["expression"]);
+
+    if ($expression === "") {
+        $display = "Error: Empty input";
+    } else {
+        $display = evaluateExpression($expression);
+    }
+}
+?>
+
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Advanced PHP Calculator</title>
+    <style>
+        body {
+            background: #e8e8e8;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            font-family: Arial, sans-serif;
+        }
+        .calculator {
+            background: #222;
+            padding: 20px;
+            border-radius: 15px;
+            width: 320px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.4);
+        }
+        .display {
+            background: #000;
+            color: #0f0;
+            font-size: 28px;
+            padding: 15px;
+            text-align: right;
+            border-radius: 10px;
+            margin-bottom: 15px;
+            word-wrap: break-word;
+            min-height: 45px;
+        }
+        .buttons {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 10px;
+        }
+        button {
+            background: #444;
+            color: white;
+            border: none;
+            padding: 20px;
+            font-size: 20px;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+        button:hover {
+            background: #666;
+        }
+        .operator {
+            background: #ff9500;
+        }
+        .operator:hover {
+            background: #e08600;
+        }
+        .equals {
+            background: #28a745;
+        }
+        .equals:hover {
+            background: #1e7c32;
+        }
+        .clear {
+            background: #dc3545;
+        }
+        .clear:hover {
+            background: #b52a37;
+        }
+    </style>
+</head>
+<body>
+
+<div class="calculator">
+    <form method="POST" id="calcForm">
+        <input type="hidden" name="expression" id="expressionInput">
+
+        <div class="display" id="display"><?php echo $display; ?></div>
+
+        <div class="buttons">
+
+            <button type="button" onclick="press('7')">7</button>
+            <button type="button" onclick="press('8')">8</button>
+            <button type="button" onclick="press('9')">9</button>
+            <button type="button" class="operator" onclick="press('/')">÷</button>
+
+            <button type="button" onclick="press('4')">4</button>
+            <button type="button" onclick="press('5')">5</button>
+            <button type="button" onclick="press('6')">6</button>
+            <button type="button" class="operator" onclick="press('*')">×</button>
+
+            <button type="button" onclick="press('1')">1</button>
+            <button type="button" onclick="press('2')">2</button>
+            <button type="button" onclick="press('3')">3</button>
+            <button type="button" class="operator" onclick="press('-')">−</button>
+
+            <button type="button" onclick="press('0')">0</button>
+            <button type="button" onclick="press('.')">.</button>
+            <button type="button" class="clear" onclick="clearDisplay()">C</button>
+            <button type="button" class="operator" onclick="press('+')">+</button>
+
+            <button type="button" class="equals" style="grid-column: span 4;" onclick="submitForm()">=</button>
+
+        </div>
+    </form>
+</div>
+
+<script>
+    let display = document.getElementById("display");
+    let expressionInput = document.getElementById("expressionInput");
+
+    function press(value) {
+        if (display.innerHTML === "0" || display.innerHTML.includes("Error") || display.innerHTML === "Syntax Error") {
+            display.innerHTML = value;
+        } else {
+            display.innerHTML += value;
+        }
+    }
+
+    function clearDisplay() {
+        display.innerHTML = "0";
+    }
+
+    function submitForm() {
+        expressionInput.value = display.innerHTML;
+        document.getElementById("calcForm").submit();
+    }
+</script>
+
+</body>
+</html>
